@@ -1,0 +1,584 @@
+1.
+SQL
+SELECT 
+    d.DealerID,
+    d.DealerName,
+    COUNT(c.CarID) AS CarsSold,
+    SUM(c.Price) AS TotalSalesValue
+FROM Dealers d
+JOIN Cars c ON c.DealerID = d.DealerID
+GROUP BY d.DealerID, d.DealerName
+ORDER BY TotalSalesValue DESC;
+
+MongoDB
+[
+  {
+    $group: {
+      _id: { dealerId: "$dealer.dealerId", dealerName: "$dealer.name" },
+      carsSold: { $sum: 1 },
+      totalSalesValue: { $sum: "$Price" }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      dealerId: "$_id.dealerId",
+      dealerName: "$_id.dealerName",
+      carsSold: 1,
+      totalSalesValue: 1
+    }
+  },
+  { $sort: { totalSalesValue: -1 } }
+]
+
+2.
+SQL
+SELECT 
+    m.ManufacturerID,
+    m.Manufacturer,
+    c.YearOfManufacture,
+    AVG(c.Price) AS AvgPrice
+FROM Cars c
+JOIN Manufacturers m ON c.ManufacturerID = m.ManufacturerID
+GROUP BY m.ManufacturerID, m.Manufacturer, c.YearOfManufacture
+ORDER BY m.Manufacturer, c.YearOfManufacture;
+
+MongoDB
+[
+  {
+    $group: {
+      _id: {
+        manufacturerId: "$manufacturer.manufacturerId",
+        manufacturer: "$manufacturer.name",
+        year: "$YearOfManufacture"
+      },
+      avgPrice: { $avg: "$Price" }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      manufacturerId: "$_id.manufacturerId",
+      manufacturer: "$_id.manufacturer",
+      yearOfManufacture: "$_id.year",
+      avgPrice: 1
+    }
+  },
+  { $sort: { manufacturer: 1, yearOfManufacture: 1 } }
+]
+
+3.
+SQL
+SELECT 
+    c.CarID,
+    c.Model,
+    c.DealerID,
+    COUNT(a.AccidentID) AS AccidentCount
+FROM Cars c
+JOIN AccidentRecords a ON a.CarID = c.CarID
+GROUP BY c.CarID, c.Model, c.DealerID
+HAVING COUNT(a.AccidentID) > 2;
+
+MongoDB
+[
+  {
+    $addFields: {
+      accidentCount: { $size: { $ifNull: ["$accidentHistory", []] } }
+    }
+  },
+  { $match: { accidentCount: { $gt: 2 } } },
+  {
+    $project: {
+      _id: 0,
+      CarID: 1,
+      Model: 1,
+      "dealer.dealerId": 1,
+      accidentCount: 1
+    }
+  }
+]
+
+4.
+
+
+5.
+SELECT 
+    a.CarID,
+    c.Model,
+    SUM(a.RepairCost) AS TotalRepairCost,
+    COUNT(a.AccidentID) AS AccidentCount
+FROM AccidentRecords a
+JOIN Cars c ON c.CarID = a.CarID
+GROUP BY a.CarID, c.Model
+HAVING SUM(a.RepairCost) > 2000;
+
+[
+  { $unwind: "$accidentHistory" },
+  {
+    $group: {
+      _id: { carId: "$CarID", model: "$Model" },
+      totalRepairCost: { $sum: "$accidentHistory.repairCost" },
+      accidentCount: { $sum: 1 }
+    }
+  },
+  { $match: { totalRepairCost: { $gt: 2000 } } },
+  {
+    $project: {
+      _id: 0,
+      CarID: "$_id.carId",
+      Model: "$_id.model",
+      totalRepairCost: 1,
+      accidentCount: 1
+    }
+  }
+]
+
+6.
+SQL
+SELECT 
+    c.FuelType,
+    CASE
+        WHEN CAST(c.EngineSize AS DECIMAL(3,1)) < 1.5 THEN '<1.5L'
+        WHEN CAST(c.EngineSize AS DECIMAL(3,1)) BETWEEN 1.5 AND 2.5 THEN '1.5–2.5L'
+        ELSE '>2.5L'
+    END AS EngineCategory,
+    AVG(c.Mileage) AS AvgMileage
+FROM Cars c
+GROUP BY c.FuelType,
+         CASE
+            WHEN CAST(c.EngineSize AS DECIMAL(3,1)) < 1.5 THEN '<1.5L'
+            WHEN CAST(c.EngineSize AS DECIMAL(3,1)) BETWEEN 1.5 AND 2.5 THEN '1.5–2.5L'
+            ELSE '>2.5L'
+         END
+ORDER BY c.FuelType, EngineCategory;
+
+MongoDB
+[
+  {
+    $addFields: {
+      engineLiters: { $toDouble: "$EngineSize" }
+    }
+  },
+  {
+    $addFields: {
+      engineCategory: {
+        $switch: {
+          branches: [
+            { case: { $lt: ["$engineLiters", 1.5] }, then: "<1.5L" },
+            {
+              case: {
+                $and: [
+                  { $gte: ["$engineLiters", 1.5] },
+                  { $lte: ["$engineLiters", 2.5] }
+                ]
+              },
+              then: "1.5–2.5L"
+            }
+          ],
+          default: ">2.5L"
+        }
+      }
+    }
+  },
+  {
+    $group: {
+      _id: { fuelType: "$FuelType", engineCategory: "$engineCategory" },
+      avgMileage: { $avg: "$Mileage" }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      fuelType: "$_id.fuelType",
+      engineCategory: "$_id.engineCategory",
+      avgMileage: 1
+    }
+  },
+  { $sort: { fuelType: 1, engineCategory: 1 } }
+]
+
+7.
+SQL
+-- Service history
+SELECT *
+FROM ServiceRecords
+WHERE CarID = 'C00111'
+ORDER BY Date;
+
+-- Accident history
+SELECT *
+FROM AccidentRecords
+WHERE CarID = 'C00111'
+ORDER BY Date;
+
+MongoDB
+[
+  { $match: { CarID: "C00111" } },
+  {
+    $project: {
+      _id: 0,
+      CarID: 1,
+      Model: 1,
+      serviceHistory: 1,
+      accidentHistory: 1
+    }
+  }
+]
+
+
+8.
+SQL
+WITH ServiceCounts AS (
+    SELECT 
+        CarID,
+        COUNT(*) AS ServiceCount
+    FROM ServiceRecords
+    GROUP BY CarID
+)
+SELECT 
+    c.CarID,
+    c.Model,
+    c.YearOfManufacture,
+    sc.ServiceCount
+FROM Cars c
+JOIN ServiceCounts sc ON sc.CarID = c.CarID
+WHERE c.YearOfManufacture <= YEAR(CURDATE()) - 10
+  AND sc.ServiceCount > 2;
+
+MongoDB
+[
+  {
+    $addFields: {
+      serviceCount: { $size: { $ifNull: ["$serviceHistory", []] } }
+    }
+  },
+  {
+    $match: {
+      YearOfManufacture: { $lte: 2015 },    // FOR CURRENT YEAR = 2023
+      serviceCount: { $gt: 2 }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      CarID: 1,
+      Model: 1,
+      YearOfManufacture: 1,
+      serviceCount: 1
+    }
+  }
+]
+
+
+9.
+SQL
+SELECT 
+    FuelType,
+    COUNT(*) AS NumCars,
+    AVG(Price) AS AvgPrice
+FROM Cars
+GROUP BY FuelType
+ORDER BY NumCars DESC;
+
+MongoDB
+[
+  {
+    $group: {
+      _id: "$FuelType",
+      numCars: { $sum: 1 },
+      avgPrice: { $avg: "$Price" }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      fuelType: "$_id",
+      numCars: 1,
+      avgPrice: 1
+    }
+  },
+  { $sort: { numCars: -1 } }
+]
+
+
+10.
+SQL
+WITH TotalCars AS (
+    SELECT 
+        DealerID,
+        COUNT(*) AS TotalCars
+    FROM Cars
+    GROUP BY DealerID
+),
+AccidentCars AS (
+    SELECT 
+        c.DealerID,
+        COUNT(DISTINCT c.CarID) AS AccidentProneCars
+    FROM Cars c
+    JOIN AccidentRecords a ON a.CarID = c.CarID
+    GROUP BY c.DealerID
+)
+SELECT 
+    d.DealerID,
+    d.DealerName,
+    tc.TotalCars,
+    COALESCE(ac.AccidentProneCars, 0) AS AccidentProneCars,
+    COALESCE(ac.AccidentProneCars, 0) / tc.TotalCars AS AccidentRatio
+FROM Dealers d
+JOIN TotalCars tc ON tc.DealerID = d.DealerID
+LEFT JOIN AccidentCars ac ON ac.DealerID = d.DealerID
+ORDER BY AccidentRatio DESC
+LIMIT 3;
+
+MongoDB
+[
+  {
+    $addFields: {
+      hasAccident: {
+        $gt: [
+          { $size: { $ifNull: ["$accidentHistory", []] } },
+          0
+        ]
+      }
+    }
+  },
+  {
+    $group: {
+      _id: {
+        dealerId: "$dealer.dealerId",
+        dealerName: "$dealer.name"
+      },
+      totalCars: { $sum: 1 },
+      accidentProneCars: {
+        $sum: {
+          $cond: [{ $eq: ["$hasAccident", true] }, 1, 0]
+        }
+      }
+    }
+  },
+  {
+    $addFields: {
+      accidentRatio: {
+        $cond: [
+          { $gt: ["$totalCars", 0] },
+          { $divide: ["$accidentProneCars", "$totalCars"] },
+          0
+        ]
+      }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      dealerId: "$_id.dealerId",
+      dealerName: "$_id.dealerName",
+      totalCars: 1,
+      accidentProneCars: 1,
+      accidentRatio: 1
+    }
+  },
+  { $sort: { accidentRatio: -1 } },
+  { $limit: 3 }
+]
+
+
+11.
+SQL
+WITH ManufacturerSales AS (
+    SELECT 
+        ManufacturerID,
+        SUM(Price) AS TotalSales
+    FROM Cars
+    GROUP BY ManufacturerID
+),
+ManufacturerRepairs AS (
+    SELECT 
+        c.ManufacturerID,
+        SUM(a.RepairCost) AS TotalRepairs
+    FROM Cars c
+    JOIN AccidentRecords a ON a.CarID = c.CarID
+    GROUP BY c.ManufacturerID
+)
+SELECT 
+    m.ManufacturerID,
+    m.Manufacturer,
+    ms.TotalSales,
+    COALESCE(mr.TotalRepairs, 0) AS TotalRepairs,
+    ms.TotalSales - COALESCE(mr.TotalRepairs, 0) AS NetProfit
+FROM Manufacturers m
+JOIN ManufacturerSales ms ON ms.ManufacturerID = m.ManufacturerID
+LEFT JOIN ManufacturerRepairs mr ON mr.ManufacturerID = m.ManufacturerID
+ORDER BY NetProfit DESC
+LIMIT 1;
+
+MongoDB
+
+
+12.
+SQL
+SELECT 
+    YEAR(Date) AS ServiceYear,
+    COUNT(*) AS NumServices
+FROM ServiceRecords
+WHERE YEAR(Date) >= YEAR(CURDATE()) - 4
+GROUP BY YEAR(Date)
+ORDER BY ServiceYear;
+
+MongoDB
+[
+  { 
+    $unwind: "$serviceHistory" 
+  },
+  {
+    $match: {
+      "serviceHistory.date": { $gte: "2020-01-01" }
+    }
+  },
+  {
+    $group: {
+      _id: {
+        year: { $substrBytes: ["$serviceHistory.date", 0, 4] }
+      },
+      numServices: { $sum: 1 }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      year: "$_id.year",
+      numServices: 1
+    }
+  },
+  { 
+    $sort: { year: 1 } 
+  }
+]
+
+
+13.
+SQL
+SET @cutoff_date = (CURRENT_DATE - INTERVAL 24 MONTH);
+
+SELECT 
+    c.CarID,
+    c.Model
+FROM Cars c
+WHERE EXISTS (
+    SELECT 1
+    FROM AccidentRecords a
+    WHERE a.CarID = c.CarID
+      AND a.Date >= @cutoff_date
+)
+AND NOT EXISTS (
+    SELECT 1
+    FROM ServiceRecords s
+    WHERE s.CarID = c.CarID
+      AND s.Date >= @cutoff_date
+);
+
+MongoDB
+[
+  {
+    $addFields: {
+      recentServices: {
+        $filter: {
+          input: { $ifNull: ["$serviceHistory", []] },
+          as: "s",
+          cond: { $gte: ["$$s.date", "2023-01-01"] }
+        }
+      },
+      recentAccidents: {
+        $filter: {
+          input: { $ifNull: ["$accidentHistory", []] },
+          as: "a",
+          cond: { $gte: ["$$a.date", "2023-01-01"] }
+        }
+      }
+    }
+  },
+  {
+    $match: {
+      recentAccidents: { $ne: [] },
+      recentServices: { $eq: [] }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      CarID: 1,
+      Model: 1
+    }
+  }
+]
+
+
+14.
+SQL
+SELECT 
+    m.ManufacturerID,
+    m.Manufacturer,
+    a.Severity,
+    COUNT(*) AS NumAccidents
+FROM AccidentRecords a
+JOIN Cars c ON c.CarID = a.CarID
+JOIN Manufacturers m ON m.ManufacturerID = c.ManufacturerID
+GROUP BY m.ManufacturerID, m.Manufacturer, a.Severity
+ORDER BY m.Manufacturer, a.Severity;
+
+MongoDB
+[
+  { $unwind: "$accidentHistory" },
+  {
+    $group: {
+      _id: {
+        manufacturerId: "$manufacturer.manufacturerId",
+        manufacturer: "$manufacturer.name",
+        severity: "$accidentHistory.severity"
+      },
+      numAccidents: { $sum: 1 }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      manufacturerId: "$_id.manufacturerId",
+      manufacturer: "$_id.manufacturer",
+      severity: "$_id.severity",
+      numAccidents: 1
+    }
+  },
+  { $sort: { manufacturer: 1, severity: 1 } }
+]
+
+
+15.
+SQL
+SELECT 
+    f.FeatureName,
+    COUNT(*) AS NumCarsWithFeature
+FROM Cars c
+JOIN CarFeatures cf ON cf.CarID = c.CarID
+JOIN Features f ON f.FeatureID = cf.FeatureID
+WHERE c.Price > 25000
+GROUP BY f.FeatureName
+ORDER BY NumCarsWithFeature DESC;
+
+MongoDB
+[
+  { $match: { Price: { $gt: 25000 } } },
+  { $unwind: "$features" },
+  {
+    $group: {
+      _id: "$features",
+      numCarsWithFeature: { $sum: 1 }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      feature: "$_id",
+      numCarsWithFeature: 1
+    }
+  },
+  { $sort: { numCarsWithFeature: -1 } }
+]
