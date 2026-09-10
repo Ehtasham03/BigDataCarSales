@@ -1,0 +1,51 @@
+DealerID,DealerName,DealerCity,Latitude,Longitude
+0,Adams-Kelly,Belfast,54.545088,-2.034983
+1,Aguilar LLC,Birmingham,53.921733,0.557778
+2,Allen-Jones,Edinburgh,51.561646,0.126593
+3,Anderson-Rivas,Dundee,52.684469,0.486504
+4,"Bailey, Grant and Carter",Sunderland,50.747838,-2.092458
+5,"Black, Black and Bishop",Durham,51.299364,-1.216481
+6,Brewer-Sosa,Swansea,51.532466,-1.391684
+7,"Brooks, Thomas and Davis",Woking,54.537631,-1.230474
+8,Brown Group,Bradford,53.35685,-2.446912
+9,Brown Inc,Plymouth,52.615955,-0.147326
+10,"Carlson, Whitaker and Barrett",Luton,52.744646,-1.185679
+11,Carr-Shaw,Woking,50.712268,-0.750035
+12,Collins and Sons,Lancaster,51.230497,-0.467322
+13,Cruz-Castro,Wolverhampton,51.880035,-2.303019
+14,"Davis, Guerrero and Vasquez",Sunderland,50.054503,-1.224031
+15,Day LLC,Stoke-on-Trent,54.069902,-2.752647
+16,Gonzales-Morales,Liverpool,54.099828,-1.796849
+17,Guzman-Logan,York,50.868285,-0.921661
+18,Hancock PLC,Watford,51.122801,0.608684
+19,"Hawkins, Stark and Campos",Durham,50.910592,-1.08633
+20,Ingram-Mitchell,Durham,54.966148,-2.512489
+21,Johnson and Sons,Derby,50.88672,-1.056824
+22,Johnson-Turner,Milton Keynes,52.018756,0.17948
+23,Johnson-Wilkinson,Glasgow,53.746682,-0.142466
+24,"Kramer, Alvarez and Davis",Slough,52.850331,-1.749703
+25,Little-Mcconnell,Newcastle upon Tyne,51.224559,0.88774
+26,Lucas PLC,Cambridge,51.88956,0.135359
+27,Macdonald Inc,Hull,52.499102,-2.33015
+28,Mclean-Miller,Bath,54.735096,-2.81676
+29,Miller-Hoover,Dundee,54.896189,-2.243713
+30,Nelson-Miller,Belfast,53.159446,-2.528466
+31,Perez Group,Chester,50.987354,-1.084662
+32,"Perez, Gordon and Thomas",Luton,53.079879,0.867981
+33,Peterson-Ewing,Middlesbrough,52.694375,-1.856727
+34,"Proctor, Villarreal and Hurley",Gloucester,53.713263,0.738007
+35,Richard-George,Nottingham,52.512743,0.508781
+36,Sandoval Group,Bradford,53.304466,-2.996212
+37,Schroeder and Sons,Aberdeen,54.748374,0.233383
+38,"Simmons, Fields and Wolf",London,53.233183,0.055345
+39,Smith LLC,Chelmsford,53.511326,-2.379689
+40,Smith Ltd,Exeter,52.362571,-0.749279
+41,Smith-Houston,Leicester,51.863203,0.912489
+42,Turner-Walton,Norwich,51.047234,-0.354412
+43,Vasquez-Murphy,Watford,51.343937,0.610865
+44,Villa and Sons,Watford,51.405253,0.513693
+45,"Wagner, Cobb and Jenkins",Newcastle upon Tyne,53.290375,0.750833
+46,"Walker, Baxter and Daniel",Brighton,53.314723,-0.5895
+47,Warner-Payne,Cambridge,52.771701,-1.344061
+48,Wilcox LLC,Cambridge,51.862216,-1.160736
+49,Wilson and Sons,York,52.27813,-0.212716
