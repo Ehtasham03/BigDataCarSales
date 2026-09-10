@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <title>Car Sales</title>
+  <style>
+    body { font-family: Arial; background: #f5f6fa; margin: 20px; }
+    h1 { text-align: center; }
+    .controls { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; background: #fff; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+    th { background: #277571; color: white; }
+    #chartContainer { width: 80%; margin: 40px auto; }
+    /* Dashboard Controls */
+    .controls { 
+      display: flex; 
+      justify-content: center; 
+      gap: 15px; 
+      margin-bottom: 20px; 
+      flex-wrap: wrap;
+    }
+    .controls label { font-weight: bold; }
+    .controls input, .controls select, .controls button {
+      padding: 8px; 
+      border-radius: 5px; 
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+    .controls button {
+      background: #277571; 
+      color: white; 
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .controls button:hover {
+      background: #409e92;
+    }
+
+  </style>
+</head>
+<body>
+  <a href="/charts" style="display: block; text-align: right; margin-top: 20px; font-size: 18px;">Go to Charts Page</a>
+
+  <h1>Car Sales</h1>
+  <!-- Filter Controls -->
+  <div class="controls">
+    <input type="text" id="Model" placeholder="Search Model">
+
+    <select id="FuelType">
+      <option value="">All Fuel Types</option>
+      <option value="Petrol">Petrol</option>
+      <option value="Diesel">Diesel</option>
+      <option value="Hybrid">Hybrid</option>
+      <option value="Electric">Electric</option> <!--there are no electrics. just testing-->
+    </select>
+
+    <!-- Add a new input for feature filtering -->
+    <select id="featureSelect">
+      <option value="">Select Feature</option>
+      <option value="Leather Seats">Leather Seats</option>
+      <option value="Sunroof">Sunroof</option>
+      <option value="Bluetooth">Bluetooth</option>
+    <!-- Add more features as needed -->
+    </select>
+
+    <input type="number" id="minPrice" placeholder="Min Price">
+    <input type="number" id="maxPrice" placeholder="Max Price">
+
+    <input type="number" id="minYear" placeholder="Min Year">
+    <input type="number" id="maxYear" placeholder="Max Year">
+
+    <select id="sortOrder">
+      <option value="">No Sorting</option>
+      <option value="asc">Price: Low → High</option>
+      <option value="desc">Price: High → Low</option>
+    </select>
+
+    <button onclick="loadProducts()">Search</button>
+  </div>
+
+
+  <!-- Product Table -->
+  <table id="productTable">
+    <thead>
+      <tr>
+        <th>Car ID</th>
+        <th>Model</th>
+        <th>Fuel Type</th>
+        <th>Engine Size</th>
+        <th>Year</th>
+        <th>Mileage</th>
+        <th>Price</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Data will be inserted here -->
+    </tbody>
+  </table>
+  <!--<div id="chartContainer">
+    <canvas id="pieChart" width="400" height="400"></canvas>
+    <canvas id="barChart" width="400" height="400"></canvas>
+    <canvas id="lineChart" width="400" height="400"></canvas>
+  </div> -->
+
+
+  <script>
+  // Function to fetch and display products
+  async function fetchProducts(queryString = "") {
+    try {
+      const res = await fetch(`/products${queryString}`);
+      if (!res.ok) throw new Error("Failed to fetch products");
+      const products = await res.json();
+
+      const tbody = document.querySelector("#productTable tbody");
+      tbody.innerHTML = ""; // clear old rows
+
+      if (!products.length) {
+        tbody.innerHTML = `<tr><td colspan="8">No products found</td></tr>`;
+        return;
+      }
+
+      products.forEach((p, index) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${p.CarID}</td>
+          <td>${p.Model}</td>
+          <td>${p.FuelType}</td>
+          <td>${p.EngineSize}</td>
+          <td>${p.YearOfManufacture}</td>
+          <td>${p.Mileage}</td>
+          <td>${p.Price}</td>
+          <td><button type="button" onclick="toggleDetails(${index})">View</button></td>
+        `;
+        tbody.appendChild(row);
+        console.log(p.serviceHistory)
+        console.log(renderServiceHistory(p.serviceHistory));
+        // DETAILS ROW (hidden by default)
+
+        const detailsRow = document.createElement("tr");
+        detailsRow.id = `details-${index}`;
+        detailsRow.style.display = "none";
+        
+
+        detailsRow.innerHTML = `
+        <td colspan="8">
+
+          <strong> Dealer Information </strong>
+          ${renderDealerInfo(p.dealer)}
+
+          <br><br>
+
+          <strong> Features </strong>
+          ${renderFeatures(p.features)}
+
+          <br><br>
+
+          <strong> Service History </strong>
+          
+          ${renderServiceHistory(p.serviceHistory)}
+
+          <br><br>
+
+          <strong> Accident History </strong>
+          ${renderAccidentHistory(p.accidentHistory)}
+
+        </td>
+      `;
+
+        tbody.appendChild(detailsRow);
+      });
+      // update the charts
+      //updateCharts(products);
+
+    } catch (err) {
+      console.error(err);
+      const tbody = document.querySelector("#productTable tbody");
+      tbody.innerHTML = `<tr><td colspan="8">Error loading products</td></tr>`;
+    }
+  }
+
+  // Function to build query string from user input
+  function buildQueryString() {
+    const Model = document.getElementById("Model").value.trim();
+    const FuelType = document.getElementById("FuelType").value;
+    const minPrice = document.getElementById("minPrice").value;
+    const maxPrice = document.getElementById("maxPrice").value;
+    const minYear = document.getElementById("minYear").value;
+    const maxYear = document.getElementById("maxYear").value;
+    const sortOrder = document.getElementById("sortOrder").value;
+    const feature = document.getElementById("featureSelect").value;
+
+    const params = new URLSearchParams();
+
+    if (Model) params.append("Model", Model);
+    if (FuelType) params.append("FuelType", FuelType);
+    if (minPrice) params.append("minPrice", minPrice);
+    if (maxPrice) params.append("maxPrice", maxPrice);
+    if (minYear) params.append("minYear", minYear);
+    if (maxYear) params.append("maxYear", maxYear);
+    if (sortOrder) params.append("sort", sortOrder);
+    if (feature) params.append("feature", feature);
+
+    return params.toString() ? `?${params.toString()}` : "";
+  }
+
+  // This function is called when the Search button is clicked
+  function loadProducts() {
+    const queryString = buildQueryString(); // build the query string based on user input
+    fetchProducts(queryString);             // read the data based on the query string and show in a table 
+  }
+
+  //Ive tried combining this into 1 page as i found it more pleasing than going to different files.
+  //ive came to the conclusion that its the server that wont let me :D
+  //move it into 2 different pages and it now runs perfect.
+
+  /*function updateCharts(products) {
+    // Prepare data for the Pie, Bar, and Line charts
+    const fuelTypeCounts = countFuelTypes(products);
+    const pricePerYear = averagePricePerYear(products);
+
+    // Create the Pie Chart for Fuel Types
+    const fuelTypes = Object.keys(fuelTypeCounts);
+    const fuelCounts = Object.values(fuelTypeCounts);
+
+    const pieCtx = document.getElementById("pieChart").getContext("2d");
+    new Chart(pieCtx, {
+        type: "pie",
+        data: {
+            labels: fuelTypes,
+            datasets: [{
+                data: fuelCounts,
+                backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4CAF50'],
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (tooltipItem) => `${tooltipItem.label}: ${tooltipItem.raw} cars`
+                    }
+                }
+            }
+        }
+    });
+
+    // Create the Bar Chart for Price Per Year
+    const years = Object.keys(pricePerYear);
+    const avgPrices = Object.values(pricePerYear);
+
+    const barCtx = document.getElementById("barChart").getContext("2d");
+    new Chart(barCtx, {
+        type: "bar",
+        data: {
+            labels: years,
+            datasets: [{
+                label: 'Average Price',
+                data: avgPrices,
+                backgroundColor: '#4CAF50',
+                borderColor: '#388E3C',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Create the Line Chart for Prices over Time
+    const lineCtx = document.getElementById("lineChart").getContext("2d");
+    new Chart(lineCtx, {
+        type: "line",
+        data: {
+            labels: years,
+            datasets: [{
+                label: 'Price Over Time',
+                data: avgPrices,
+                fill: false,
+                borderColor: '#FF5733',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// Helper function to count fuel types
+function countFuelTypes(products) {
+    return products.reduce((counts, product) => {
+        counts[product.FuelType] = (counts[product.FuelType] || 0) + 1;
+        return counts;
+    }, {});
+}
+
+// Helper function to calculate average price per year
+function averagePricePerYear(products) {
+    const yearPriceMap = {};
+
+    products.forEach(p => {
+        if (!yearPriceMap[p.YearOfManufacture]) {
+            yearPriceMap[p.YearOfManufacture] = { total: 0, count: 0 };
+        }
+        yearPriceMap[p.YearOfManufacture].total += p.Price;
+        yearPriceMap[p.YearOfManufacture].count += 1;
+    });
+
+    // Calculate average price
+    for (const year in yearPriceMap) {
+        yearPriceMap[year] = yearPriceMap[year].total / yearPriceMap[year].count;
+    }
+
+    return yearPriceMap;
+} */
+
+
+  // Load all products initially
+  fetchProducts();
+
+  function renderDealerInfo(dealer) {
+    if (!dealer) return "<p>No dealer information.</p>";
+
+    return `
+      <table width="100%">
+        <tr>
+          <th>Dealer ID</th>
+          <th>Name</th>
+          <th>City</th>
+          <th>Latitude</th>
+          <th>Longitude</th>
+        </tr>
+        <tr>
+          <td>${dealer.dealerId}</td>
+          <td>${dealer.name}</td>
+          <td>${dealer.city}</td>
+          <td>${dealer.location?.latitude ?? "N/A"}</td>
+          <td>${dealer.location?.longitude ?? "N/A"}</td>
+        </tr>
+      </table>
+    `;
+  }
+
+  function renderFeatures(features = []) {
+    if (!features || !features.length) return "<p>No features listed.</p>";
+
+    let html = "<ul>";
+
+    features.forEach(f => {
+      html += `<li>${f}</li>`;
+    });
+
+    html += "</ul>";
+    return html;
+  }
+
+  function renderServiceHistory(services = []) {
+  if (!services || services.length === 0) {
+    console.log('No service history available');  // This will help debug
+    return "<p>No service history available.</p>";
+  }
+
+  let html = `<table width="100%">
+    <tr>
+      <th>Service ID</th>
+      <th>Date</th>
+      <th>Type</th>
+      <th>Cost</th>
+    </tr>`;
+
+  services.forEach(s => {
+    html += `
+      <tr>
+        <td>${s.serviceId || 'N/A'}</td>
+        <td>${s.date || 'N/A'}</td>
+        <td>${s.type || 'N/A'}</td>
+        <td>${s.cost || 'N/A'}</td>
+      </tr>
+    `;
+  });
+
+  html += `</table>`;
+  return html;
+}
+
+
+  function renderAccidentHistory(accidents = []) {
+    if (!accidents || !accidents.length) return "<p>No accident history.</p>";
+
+    let html = `<table width="100%">
+      <tr>
+        <th>Accident ID</th>
+        <th>Date</th>
+        <th>Severity</th>
+        <th>Description</th>
+        <th>Repair Cost</th>
+      </tr>`;
+
+    accidents.forEach(a => {
+      html += `
+        <tr>
+          <td>${a.accidentId}</td>
+          <td>${a.date}</td>
+          <td>${a.severity}</td>
+          <td>${a.description}</td>
+          <td>${a.repairCost}</td>
+        </tr>
+      `;
+    });
+
+    html += `</table>`;
+    return html;
+  }
+
+  function toggleDetails(index) {
+    const row = document.getElementById(`details-${index}`);
+    if (!row) return;
+    row.style.display = row.style.display === "none" ? "table-row" : "none";
+  }
+</script>
+
+</body>
+</html>

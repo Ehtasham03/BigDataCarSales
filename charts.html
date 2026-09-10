@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Car Sales Charts</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f6fa;
+      margin: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    #chartContainer {
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-top: 40px;
+    }
+    canvas {
+      width: 300px;
+      height: 300px;
+      max-width: 80%;
+    }
+  </style>
+</head>
+<body>
+<a href="/index.html" style="display: block; text-align: right; margin-top: 20px; font-size: 18px;">Go to data Page</a>
+
+  <h1>Car Sales Charts</h1>
+
+  <div id="chartContainer">
+    <canvas id="pieChart" width="100" height="100"></canvas>
+    <canvas id="barChart" width="100" height="100"></canvas>
+    <canvas id="lineChart" width="100" height="100"></canvas>
+  </div>
+
+  <script>
+    // Function to fetch products and update charts
+    async function fetchProductsAndRenderCharts() {
+      try {
+        const res = await fetch('/products');
+        if (!res.ok) throw new Error("Failed to fetch products");
+        const products = await res.json();
+
+        // Prepare data for the charts
+        const fuelTypeCounts = countFuelTypes(products);
+        const pricePerYear = averagePricePerYear(products);
+
+        // Update the charts
+        updateCharts(fuelTypeCounts, pricePerYear);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // Helper function to count fuel types
+    function countFuelTypes(products) {
+      return products.reduce((counts, product) => {
+        counts[product.FuelType] = (counts[product.FuelType] || 0) + 1;
+        return counts;
+      }, {});
+    }
+
+    // Helper function to calculate average price per year
+    function averagePricePerYear(products) {
+      const yearPriceMap = {};
+
+      products.forEach(p => {
+        if (!yearPriceMap[p.YearOfManufacture]) {
+          yearPriceMap[p.YearOfManufacture] = { total: 0, count: 0 };
+        }
+        yearPriceMap[p.YearOfManufacture].total += p.Price;
+        yearPriceMap[p.YearOfManufacture].count += 1;
+      });
+
+      // Calculate average price
+      for (const year in yearPriceMap) {
+        yearPriceMap[year] = yearPriceMap[year].total / yearPriceMap[year].count;
+      }
+
+      return yearPriceMap;
+    }
+
+    // Function to update the charts with new data
+    function updateCharts(fuelTypeCounts, pricePerYear) {
+      // Pie Chart for Fuel Types
+      const fuelTypes = Object.keys(fuelTypeCounts);
+      const fuelCounts = Object.values(fuelTypeCounts);
+
+      const pieCtx = document.getElementById("pieChart").getContext("2d");
+      new Chart(pieCtx, {
+        type: "pie",
+        data: {
+          labels: fuelTypes,
+          datasets: [{
+            data: fuelCounts,
+            backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4CAF50'],
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'top',
+            },
+            tooltip: {
+              callbacks: {
+                label: (tooltipItem) => `${tooltipItem.label}: ${tooltipItem.raw} cars`
+              }
+            }
+          }
+        }
+      });
+
+      // Bar Chart for Price Per Year
+      const years = Object.keys(pricePerYear);
+      const avgPrices = Object.values(pricePerYear);
+
+      const barCtx = document.getElementById("barChart").getContext("2d");
+      new Chart(barCtx, {
+        type: "bar",
+        data: {
+          labels: years,
+          datasets: [{
+            label: 'Average Price',
+            data: avgPrices,
+            backgroundColor: '#4CAF50',
+            borderColor: '#388E3C',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+
+      // Line Chart for Prices over Time
+      const lineCtx = document.getElementById("lineChart").getContext("2d");
+      new Chart(lineCtx, {
+        type: "line",
+        data: {
+          labels: years,
+          datasets: [{
+            label: 'Price Over Time',
+            data: avgPrices,
+            fill: false,
+            borderColor: '#FF5733',
+            tension: 0.1
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    // Fetch products and render charts when page loads
+    fetchProductsAndRenderCharts();
+  </script>
+
+</body>
+</html>
